@@ -17,7 +17,7 @@ def EGM (sol,h_plus,e_plus, t,par):
     # inv RHS euler
     delta = death_chance(t)
     marg_u_bequest = marg_util_bequest(par.grid_a[t,:], par)
-    #marg_u_pens
+    #marg_u_pens MISSING WHAT TO DO HERE??
     
     c_raw = inv_marg_util((1-delta) * marg_u_bequest + delta * par.beta * par.interest * avg_marg_u_plus, par)
     m_raw = c_raw + par.grid_a[t,:]
@@ -39,7 +39,7 @@ def human_capital(e, t, par, tau=("cg","high")):
     return np.exp(par.eta_0[edu] + par.eta_0[skill] + par.eta_1[edu] * t*e + par.eta_2[edu] * (t*e)**2 + par.eta_3*t + par.eta_4*t**2)
 
 def soft_max(x, y):
-    v = 0.1
+    v = 0.3
     return v * np.log(np.exp(x/v) + np.exp(y/v))
 
 def pens_fun(m, wage):
@@ -50,7 +50,8 @@ def pens_fun(m, wage):
         pens = soft_max(10.75973 + 1.84692 * (year > 2010) 
                         - soft_max(0, soft_max(0.27749 * wage, 0.00499 * (m_asset_test - 117.08260))), 0)
     except:
-        print(pens)
+        print(wage)
+        print(m_asset_test)
         return "dd"
         
     return pens
@@ -91,11 +92,11 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
     #print(income)
     #print(tax_fun(h_plus * wage_plus, par))
     
-    super_payment = K_plus * par.rho[edu] * (t+1 == 65)   
-    m_plus = par.interest * a + income - tax_fun(income, par) + par.tr * (t+1 <= 3) # wealth before pens
+    super_payment = K_plus * par.rho[edu] * (t+1 == 65)  
+    
+    m_plus = par.interest * a + income - tax_fun(income, par) + par.tr * (t+1 <= 23) # wealth before pens
 
-    #pens_fun(m_plus, wage_plus)
-    #m_plus += pens_fun(m_plus, wage_plus) * (t+1 > 65) # wealth after pens
+    m_plus += pens_fun(m_plus, wage_plus) * (t+1 >65) # wealth after pens
     
     # Value, consumption, marg_util
     shape = (par.NH,m_plus.size)
@@ -164,12 +165,14 @@ def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par):
                 # Consumption
                 c_guess = c_now+c_slope*(m_now-m_low)
                 
+                #m_now = np.maximum(c_guess, 0.001)
+                c_guess = np.maximum(c_guess, 0.001)
                 # post-decision values
                 a_guess = m_now - c_guess
                 w = w_now+w_slope*(a_guess-a_low)
                 
-                # Value of choice
-                v_guess = util(c_guess,h_plus,t,par)+par.beta*death_chance(t)*w
+                # Value of choice #### 
+                v_guess = util(c_guess,h_plus,t,par) + (1-death_chance(t)) * util_bequest(a_guess, par)  + par.beta*death_chance(t)*w
                 
                 # Update
                 if v_guess >v[j]:
@@ -179,7 +182,7 @@ def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par):
 
 def marg_util_bequest(b, par):
     a = np.ones(b.shape) * par.credit_constraint + 0.00001
-    return par.b_scale * (b + a)**(1-par.zeta_beq) 
+    return par.b_scale * (b + a)**(-par.zeta_beq) 
     
 def util_bequest(b, par, a_is_grid = True): 
     if a_is_grid:

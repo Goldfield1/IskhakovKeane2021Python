@@ -25,8 +25,9 @@ class model_dc_multidim():
         #par.Tmax = 50
         #par.Tmin = 25
         #par.T = par.Tmax -  par.Tmin 
-        par.T = 60
-
+        par.T = 90
+        par.Tmin = 20
+        
         # Model parameters
         par.beta = 0.96963
         
@@ -35,9 +36,9 @@ class model_dc_multidim():
         par.credit_constraint = 20
         
         # Grids and numerical integration
-        par.m_max = 500
+        par.m_max = 1000
         par.m_phi = 1.1 # Curvature parameters
-        par.a_max = 500
+        par.a_max = 1000
         par.a_phi = 1.1  # Curvature parameters
         par.h_max = 1.0
         par.p_phi = 1.0 # Curvature parameters
@@ -125,8 +126,8 @@ class model_dc_multidim():
         
         for i_c, m in enumerate(par.grid_m):
             c = optimize.minimize_scalar(obj, args=(m, 0, par), bounds = (0.000001, m), method = "bounded").x
-            sol.c[par.T-1,:,i_c,:] = c
-            sol.v[par.T-1,:,i_c,:] = egm.util(c,0,par.T-1,par)
+            sol.c[par.T -1,:,i_c,:] = c
+            sol.v[par.T -1,:,i_c,:] = egm.util(c,0,par.T - 1,par)
         #return
         """
         # Last period, (= consume all) 
@@ -144,14 +145,19 @@ class model_dc_multidim():
         """
         # Before last period
         # T_plus is time choice [T^w, T^H], e.g. [5, 10]  
-        for t in range(par.T-2,-1,-1):
+        for t in range(par.T-2, par.Tmin -1,-1):
             print(t)
             #Choice specific function
             for i_e, e_plus in enumerate(par.grid_e):
-                for i_h, h_plus in enumerate(par.H_bunches):
-                    if t > 79:
-                        h_plus = 0
+                if t > 84:
+                    h_plus = 0
+                    c,v = egm.EGM(sol,h_plus,e_plus,t,par)
+                    sol.c[t,:,:,i_e] = c
+                    sol.v[t,:,:,i_e] = v
+                    #print(c.shape)
+                    continue
                     
+                for i_h, h_plus in enumerate(par.H_bunches):
                     # Solve model with EGM
                     c,v = egm.EGM(sol,h_plus,e_plus,t,par)
                     sol.c[t,i_h,:,i_e] = c

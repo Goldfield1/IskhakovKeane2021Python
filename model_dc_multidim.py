@@ -36,9 +36,9 @@ class model_dc_multidim():
         par.credit_constraint = 20
         
         # Grids and numerical integration
-        par.m_max = 1000
+        par.m_max = 500
         par.m_phi = 1.1 # Curvature parameters
-        par.a_max = 1000
+        par.a_max = 500
         par.a_phi = 1.1  # Curvature parameters
         par.h_max = 1.0
         par.p_phi = 1.0 # Curvature parameters

@@ -2,14 +2,14 @@ import numpy as np
 import tools
 import warnings
 
-def EGM (sol,h_plus,e_plus, t,par): 
+def EGM (sol,h_plus,e_plus, t,par, edu, work_type): 
 
     #if z_plus == 1:     #Retired =  Not working
     #    w_raw, avg_marg_u_plus = retired(sol,z_plus,p,t,par)
     #else:               # Working
     #    w_raw, avg_marg_u_plus = working(sol,z_plus,p,t,par)
 
-    w_raw, avg_marg_u_plus = first_step(sol,h_plus,e_plus,t,par)
+    w_raw, avg_marg_u_plus = first_step(sol,h_plus,e_plus,t,par, (edu, work_type))
 
     # raw c, m and v
     # + (1-delta) * marg_util_bequest b() # bequest
@@ -24,7 +24,7 @@ def EGM (sol,h_plus,e_plus, t,par):
    
     # Upper Envelope
     #c,v = c_raw, m_raw
-    c,v = upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par)
+    c,v = upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par, (edu, work_type))
     #c, v = c_raw, m_raw
     return c,v
 
@@ -73,6 +73,9 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
 
     
     edu, skill = tau
+    edu_i = par.edu_types.index(edu)
+    skill_i = par.work_types.index(skill)
+
     # Prepare
     #print(t)
     
@@ -87,7 +90,7 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
     tax_fun = np.vectorize(tax_fun_)
           
     e_plus = (1/(1 + t)) * (t * e + h_plus/par.H_bunches[5])
-    K_plus = human_capital(e_plus, t, par)
+    K_plus = human_capital(e_plus, t, par, tau)
     wage_plus = K_plus * xi # K
     income = h_plus * wage_plus / 1000
     
@@ -110,10 +113,10 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
     # range over possible hours worked next period
     for i, h_i in enumerate(par.H_bunches):
         # Choice specific value 
-        v_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.v[t+1,i], m_plus, e_plus)
+        v_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.v[t+1,i, skill_i, edu_i], m_plus, e_plus)
     
         # Choice specific consumption    
-        c_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.c[t+1,i], m_plus, e_plus)
+        c_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.c[t+1,i, skill_i, edu_i], m_plus, e_plus)
         c_plus[i,:] = np.maximum(c_plus[i,:], 0.001)
                 
         # Choice specific Marginal utility
@@ -132,7 +135,7 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
     return w_raw, avg_marg_u_plus
 
 
-def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par):
+def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par, tau):
     
     # Add a point at the bottom
     c_raw = np.append(1e-6,c_raw)  
@@ -175,7 +178,7 @@ def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par):
                 w = w_now+w_slope*(a_guess-a_low)
                 
                 # Value of choice #### 
-                v_guess = util(c_guess,h_plus,t,par) + (1-death_chance(t)) * util_bequest(a_guess, par)  + par.beta*death_chance(t)*w
+                v_guess = util(c_guess,h_plus,t,par, tau) + (1-death_chance(t)) * util_bequest(a_guess, par)  + par.beta*death_chance(t)*w
                 
                 # Update
                 if v_guess >v[j]:
@@ -209,8 +212,8 @@ def v(h, t, par, tau=("cg","high")):
     
     return (h > 0) * k_type * k_age * par.gamma[h]
 
-def util(c, h, t, par):
-    return ((c**(1.0-par.zeta))/(1.0-par.zeta)- v(h, t, par))
+def util(c, h, t, par, tau=("cg","high")):
+    return ((c**(1.0-par.zeta))/(1.0-par.zeta)- v(h, t, par, tau))
 
 
 def marg_util(c,par):

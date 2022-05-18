@@ -87,6 +87,9 @@ class model_dc_multidim():
         par.sim_mini = 2.5 # initial m in simulation
         par.simN = 100 # number of persons in simulation
         par.simT = 10 # number of periods in simulation
+        
+        par.edu_types = ["cg", "hs", "dr"]
+        par.work_types = ["low", "high"] 
     
     def create_grids(self):
         par = self.par
@@ -115,51 +118,38 @@ class model_dc_multidim():
         par = self.par
         sol = self.sol
 
-        shape=(par.T, par.NH, par.Nm, par.Ne)
+        shape=(par.T, par.NH, par.Nm, par.Ne, 2, 3)
         sol.m = np.nan+np.zeros(shape)
         sol.c = np.nan+np.zeros(shape)
         sol.v = np.nan+np.zeros(shape)
         
-        def obj(c, m, h_plus, par):
+        def obj(c, m, h_plus, par, edu, work_type):
             b = m - c
-            return -(egm.util(c, h_plus, par.T-1, par) + egm.util_bequest(b, par, a_is_grid = False) )
+            return -(egm.util(c, h_plus, par.T-1, par, (edu, work_type)) + egm.util_bequest(b, par, a_is_grid = False) )
         
-        for i_c, m in enumerate(par.grid_m):
-            c = optimize.minimize_scalar(obj, args=(m, 0, par), bounds = (0.000001, m), method = "bounded").x
-            sol.c[par.T -1,:,i_c,:] = c
-            sol.v[par.T -1,:,i_c,:] = egm.util(c,0,par.T - 1,par)
-        #return
-        """
-        # Last period, (= consume all) 
-        for i_e in range(par.Ne):
-            for i_h, h_plus in enumerate(par.H_bunches):
+        for work_i, work_type in enumerate(par.work_types):
+            for edu_i, edu  in enumerate(par.edu_types):
                 for i_c, m in enumerate(par.grid_m):
-                    c = optimize.minimize_scalar(obj, args=(h_plus, par), bounds = (0, m)).x
-                    
-                    sol.c[par.T-1,i_h,i_c,i_e] = c
-                    sol.v[par.T-1,i_h,i_c,i_e] = egm.util(c,h_plus,par.T-1,par)
-                
-                    #sol.m[par.T-1,i_h,:,i_e] = par.grid_m
-                    #sol.c[par.T-1,i_h,:,i_e] = par.grid_m
-                    #sol.v[par.T-1,i_h,:,i_e] = egm.util(sol.c[par.T-1,i_h,:,i_e],h_plus,par.T-1,par)
-        """
-        # Before last period
-        # T_plus is time choice [T^w, T^H], e.g. [5, 10]  
-        for t in range(par.T-2, par.Tmin -1,-1):
-            print(t)
-            #Choice specific function
-            for i_e, e_plus in enumerate(par.grid_e):
-                if t > 84:
-                    h_plus = 0
-                    c,v = egm.EGM(sol,h_plus,e_plus,t,par)
-                    sol.c[t,:,:,i_e] = c
-                    sol.v[t,:,:,i_e] = v
-                    #print(c.shape)
-                    continue
-                    
-                for i_h, h_plus in enumerate(par.H_bunches):
-                    # Solve model with EGM
-                    c,v = egm.EGM(sol,h_plus,e_plus,t,par)
-                    sol.c[t,i_h,:,i_e] = c
-                    sol.v[t,i_h,:,i_e] = v
+                    c = optimize.minimize_scalar(obj, args=(m, 0, par, edu, work_type), bounds = (0.000001, m), method = "bounded").x
+                    sol.c[par.T -1,:,i_c,:, work_i, edu_i] = c
+                    sol.v[par.T -1,:,i_c,:, work_i, edu_i] = egm.util(c,0,par.T - 1,par, (edu, work_type))
+        
+        for work_i, work_type in enumerate(par.work_types):
+            for edu_i, edu  in enumerate(par.edu_types):
+                print(f'Evalutating: {edu}, {work_type}')
+                for t in range(par.T-2, par.Tmin -1,-1):
+                    print(f'Evalutating period: {t}')
+                    for i_e, e_plus in enumerate(par.grid_e):
+                        if t > 84: # cant work after age 85
+                            h_plus = 0
+                            c,v = egm.EGM(sol,h_plus,e_plus,t,par, edu, work_type)
+                            sol.c[t,:,:,i_e, work_i, edu_i] = c
+                            sol.v[t,:,:,i_e, work_i, edu_i] = v
+                            continue
+
+                        for i_h, h_plus in enumerate(par.H_bunches):
+                            # Solve model with EGM
+                            c,v = egm.EGM(sol,h_plus,e_plus,t,par, edu, work_type)
+                            sol.c[t,i_h,:,i_e, work_i, edu_i] = c
+                            sol.v[t,i_h,:,i_e, work_i, edu_i] = v
             #return

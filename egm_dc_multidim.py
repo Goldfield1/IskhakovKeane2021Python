@@ -183,6 +183,11 @@ def upper_envelope(t,h_plus,c_raw,m_raw,w_raw,par):
                     c[j]=c_guess
     return c,v
 
+def marg_pens(m, wage):
+    v = 0.1
+    return (0.00499 * np.exp((0.00499 * m + 10.75973 - 0.00499 * 117.08260)/v) ) / ( ( np.exp(0.00499 * (m - 117.08260)/v ) + np.exp(0.27749 * wage/v) + np.exp(10.75973/v) +1)  * (np.exp(0.00499 *(m - 117.08260)/v ) + np.exp(wage * 0.27749/v) +1 ) )
+
+    
 def marg_util_bequest(b, par):
     a = np.ones(b.shape) * par.credit_constraint + 0.00001
     return par.b_scale * (b + a)**(-par.zeta_beq) 

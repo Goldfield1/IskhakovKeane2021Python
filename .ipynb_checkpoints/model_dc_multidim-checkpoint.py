@@ -88,7 +88,8 @@ class model_dc_multidim():
         par.simN = 100 # number of persons in simulation
         par.simT = 10 # number of periods in simulation
         
-        par.edu_types = ["cg", "hs", "dr"]
+        #par.edu_types = ["cg", "hs", "dr"]
+        par.edu_types = ["cg"]
         par.work_types = ["low", "high"] 
     
     def create_grids(self):
@@ -98,7 +99,8 @@ class model_dc_multidim():
         par.grid_a = np.nan + np.zeros([par.T,par.Na])
         for t in range(par.T):
             # credit
-            par.grid_a[t,:] = tools.nonlinspace(0+1e-6,par.a_max,par.Na,par.a_phi)
+            par.grid_a[t,:] = tools.nonlinspace(-20,par.a_max,par.Na,par.a_phi)
+            #par.grid_a[t,:] = tools.nonlinspace(0+1e-6,par.a_max,par.Na,par.a_phi)
 
         # Cash-on-hand
         par.grid_m =  np.concatenate([np.linspace(0+1e-6,1-1e-6,par.Nm_b), tools.nonlinspace(1+1e-6,par.m_max,par.Nm-par.Nm_b,par.m_phi)]) 
@@ -133,7 +135,7 @@ class model_dc_multidim():
                     c = optimize.minimize_scalar(obj, args=(m, 0, par, edu, work_type), bounds = (0.000001, m), method = "bounded").x
                     sol.c[par.T -1,:,i_c,:, work_i, edu_i] = c
                     sol.v[par.T -1,:,i_c,:, work_i, edu_i] = egm.util(c,0,par.T - 1,par, (edu, work_type))
-        
+                    
         for work_i, work_type in enumerate(par.work_types):
             for edu_i, edu  in enumerate(par.edu_types):
                 print(f'Evalutating: {edu}, {work_type}')

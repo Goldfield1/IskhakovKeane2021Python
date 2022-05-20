@@ -91,17 +91,14 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
           
     e_plus = (1/(1 + t)) * (t * e + h_plus/par.H_bunches[5])
     K_plus = human_capital(e_plus, t, par, tau)
+    #print(K_plus)
     wage_plus = K_plus * xi # K
     income = h_plus * wage_plus / 1000
-    
-    #print(income)
-    #print(tax_fun(h_plus * wage_plus, par))
-    
-    #super_payment = K_plus * par.rho[edu] * (t+1 == 65)  
     
     m_plus = par.interest * a + income - tax_fun(income, par) + par.tr * (t+1 <= 23) # wealth before pens
     m_plus += K_plus * par.rho[edu] * (t+1 == 65)  
     m_plus += pens_fun(a * xi, wage_plus) * (t+1 >= 65) # wealth after pens
+    
     #m_plus += pens_fun(m_plus, wage_plus) * (t+1 >= 65) # wealth after pens
     
     # Value, consumption, marg_util
@@ -113,12 +110,12 @@ def first_step(sol, h_plus, e, t, par, tau=("cg","high")):
     # range over possible hours worked next period
     for i, h_i in enumerate(par.H_bunches):
         # Choice specific value 
-        v_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.v[t+1,i, skill_i, edu_i], m_plus, e_plus)
-    
+        
+        v_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.v[t+1,i, :, :, skill_i, edu_i], m_plus, e_plus)
         # Choice specific consumption    
-        c_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.c[t+1,i, skill_i, edu_i], m_plus, e_plus)
+        c_plus[i,:] = tools.interp_2d_vec(par.grid_m, par.grid_e, sol.c[t+1,i, :, :, skill_i, edu_i], m_plus, e_plus)
         c_plus[i,:] = np.maximum(c_plus[i,:], 0.001)
-                
+
         # Choice specific Marginal utility
         marg_u_plus[i,:] = marg_util(c_plus[i,:], par) 
        
